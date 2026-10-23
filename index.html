@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Design Systems Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,400..700;1,400..700&family=Google+Sans+Code:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wash" aria-hidden="true"></div>
+<aside id="side" class="glass" aria-label="Lessons">
+  <div class="brand"><b>Design Systems Lab</b><small>Learn by poking things</small></div>
+  <nav id="nav" aria-label="Modules"></nav>
+  <section class="tokbar" aria-label="Live design tokens">
+    <h2>Design Tokens</h2>
+    <p>Every demo reads these values.</p>
+    <label>Primary <input type="color" id="t-primary" value="#6d5efc"></label>
+    <label>Radius <input type="range" id="t-radius" min="0" max="24" value="10"><output id="o-radius">10</output></label>
+    <label>Spacing <input type="range" id="t-space" min="6" max="20" value="12"><output id="o-space">12</output></label>
+  </section>
+  <div class="prog" role="progressbar" aria-label="Quizzes completed" aria-valuemin="0" aria-valuemax="100"><div id="progbar"></div></div>
+  <small id="proglabel"></small>
+</aside>
+<div id="scrim"></div>
+<main id="main">
+  <header id="toolbar" class="glass">
+    <button class="tbtn" id="sbtn" aria-label="Show lessons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M9 4.5v15"/></svg></button>
+    <span id="tbtitle"></span>
+    <span class="spacer"></span>
+    <button class="tbtn" id="tb-prev" aria-label="Previous lesson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></button>
+    <button class="tbtn pri" id="tb-next" aria-label="Next lesson"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></button>
+  </header>
+  <div id="content"></div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

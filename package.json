@@ -1,0 +1,7 @@
+{
+  "name": "design-systems-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactive learning app: React, Vue, Angular, Web Components, SwiftUI, Compose and design systems",
+  "scripts": { "dev": "node dev-server.js", "start": "node dev-server.js" }
+}
