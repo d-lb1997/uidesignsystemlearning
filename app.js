@@ -1,4 +1,4 @@
-/* Design Systems Lab — vanilla JS, no dependencies */
+/* Design Systems Lab, vanilla JS, no dependencies */
 const R = String.raw;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -9,7 +9,7 @@ const cards = items => `<div class="flipgrid">${items.map(([t, d]) => `<button c
 const tabs = (id, items) => `<div class="tabs" id="${id}"><div class="tabbar" role="tablist">${items.map((t, i) => `<button data-t="${i}" role="tab" aria-selected="${i ? 'false' : 'true'}">${t[0]}</button>`).join('')}</div>${items.map((t, i) => `<div class="pane ${i ? '' : 'on'}" data-t="${i}">${t[1]}</div>`).join('')}</div>`;
 
 /* ---------- design tokens (single source of truth for all demos) ---------- */
-const T = { primary: '#6d5efc', radius: 10, space: 12 };
+const T = { primary: '#1d5fbf', radius: 10, space: 12 };
 const tokenListeners = [];
 function applyTokens() {
   const s = document.documentElement.style;
@@ -31,7 +31,11 @@ const store = {
 };
 
 /* ---------- quizzes ---------- */
-function quizHTML() { return `<section class="quiz"><h3>Check Yourself</h3><div class="qs"></div><div class="qres"></div></section>`; }
+const MARKS = {
+  ok: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>',
+  bad: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>'
+};
+function quizHTML() { return `<section class="quiz"><h3>Check yourself</h3><div class="qs"></div><div class="qres"></div></section>`; }
 function initQuiz(root, id, bank, onFinish) {
   const qs = $('.qs', root), res = $('.qres', root); let answered = 0, score = 0;
   qs.innerHTML = bank.map((q, i) => `<div class="q" data-i="${i}"><p>${i + 1}. ${q.q}</p><div class="opts">${q.o.map((o, j) => `<button data-j="${j}"><span class="mark" aria-hidden="true"></span><span>${o}</span></button>`).join('')}</div><div class="why">${q.why}</div></div>`).join('');
@@ -40,8 +44,8 @@ function initQuiz(root, id, bank, onFinish) {
     const qe = b.closest('.q'); if (qe.classList.contains('done')) return;
     const q = bank[+qe.dataset.i], j = +b.dataset.j;
     qe.classList.add('done'); answered++;
-    $$('button', qe).forEach((x, k) => { x.disabled = true; if (k === q.a) { x.classList.add('right'); $('.mark', x).textContent = '✓'; x.insertAdjacentHTML('beforeend', '<span class="sr"> Correct answer</span>'); } });
-    if (j === q.a) score++; else { b.classList.add('wrong'); $('.mark', b).textContent = '✕'; b.insertAdjacentHTML('beforeend', '<span class="sr"> Your answer, incorrect</span>'); }
+    $$('button', qe).forEach((x, k) => { x.disabled = true; if (k === q.a) { x.classList.add('right'); $('.mark', x).innerHTML = MARKS.ok; x.insertAdjacentHTML('beforeend', '<span class="sr"> Correct answer</span>'); } });
+    if (j === q.a) score++; else { b.classList.add('wrong'); $('.mark', b).innerHTML = MARKS.bad; b.insertAdjacentHTML('beforeend', '<span class="sr"> Your answer, incorrect</span>'); }
     if (answered === bank.length) {
       res.textContent = `Score: ${score}/${bank.length} ${score === bank.length ? 'Perfect.' : score >= bank.length * .6 ? 'Nice work.' : 'Re-read the lesson and try again.'}`;
       const p = store.get(); p[id] = Math.max(p[id] || 0, score / bank.length); store.set(p); updateNav();
@@ -88,7 +92,7 @@ function updateNav() {
   const p = store.get();
   $('#nav').innerHTML = GROUPS.map((g, gi) => `<div class="ngroup"><h3>${g[0]}</h3>${g[1].map(id => {
     const i = M.findIndex(m => m.id === id), m = M[i], pc = p[id] != null ? Math.round(p[id] * 100) : null;
-    return `<button data-i="${i}" ${i === cur ? 'aria-current="page"' : ''}><span class="tile g${gi}">${svg(m.icon)}</span><span class="nl">${m.title}</span>${pc != null ? `<span class="score"><span class="sr">Quiz score </span>${pc}%</span>` : ''}</button>`;
+    return `<button data-i="${i}" ${i === cur ? 'aria-current="page"' : ''}>${svg(m.icon)}<span class="nl">${m.title}</span><span class="score"><span class="sr">Quiz score </span>${pc != null ? pc + '%' : '–'}</span></button>`;
   }).join('')}</div>`).join('');
   const done = M.filter(m => p[m.id] != null).length;
   $('#progbar').style.width = (done / M.length * 100) + '%';
@@ -100,24 +104,17 @@ function go(i) {
   cleanup.forEach(f => f()); cleanup = [];
   tokenListeners.length = 0;
   const m = M[i], root = $('#content');
-  root.innerHTML = `<p class="eyebrow">${GROUPS[groupOf(m.id)][0]} · ${i + 1} of ${M.length}</p><h1 id="ptitle">${m.title}</h1><p class="tag">${m.tag}</p>${m.html()}${m.quiz || m.dynQuiz ? quizHTML() : ''}
-    <div class="nav">${i > 0 ? `<button class="btn" data-go="${i - 1}">‹ ${M[i - 1].title}</button>` : '<span></span>'}${i < M.length - 1 ? `<button class="btn pri" data-go="${i + 1}">${M[i + 1].title} ›</button>` : ''}</div>`;
+  root.innerHTML = `<div class="titlerow"><div><h1 id="ptitle">${m.title}</h1><p class="tag">${m.tag}</p></div>${i < M.length - 1 ? `<button class="btn pri" data-go="${i + 1}">Next lesson</button>` : ''}</div>${m.html()}${m.quiz || m.dynQuiz ? quizHTML() : ''}
+    <div class="nav">${i > 0 ? `<button class="btn" data-go="${i - 1}">Previous: ${M[i - 1].title}</button>` : '<span></span>'}${i < M.length - 1 ? `<button class="btn" data-go="${i + 1}">Next: ${M[i + 1].title}</button>` : ''}</div>`;
   m.init && m.init(root);
   if (m.quiz || m.dynQuiz) initQuiz($('.quiz', root), m.id, m.quiz || m.dynQuiz());
   $('#tbtitle').textContent = m.title;
-  $('#tb-prev').disabled = i === 0; $('#tb-next').disabled = i === M.length - 1;
-  $('#toolbar').classList.remove('scrolled');
-  io && io.disconnect();
-  io = new IntersectionObserver(([e]) => $('#toolbar').classList.toggle('scrolled', !e.isIntersecting), { rootMargin: '-72px 0px 0px 0px' });
-  io.observe($('#ptitle'));
   document.body.classList.remove('side-open');
   updateNav(); window.scrollTo(0, 0);
 }
 document.addEventListener('click', e => {
   const n = e.target.closest('#nav button'); if (n) return go(+n.dataset.i);
   const g = e.target.closest('[data-go]'); if (g) return go(+g.dataset.go);
-  if (e.target.closest('#tb-prev')) return go(cur - 1);
-  if (e.target.closest('#tb-next')) return go(cur + 1);
   if (e.target.closest('#sbtn')) return document.body.classList.add('side-open');
   if (e.target.id === 'scrim') return document.body.classList.remove('side-open');
   const tb = e.target.closest('.tabbar button');
@@ -127,27 +124,32 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.body.classList.remove('side-open'); });
 
 /* =====================================================================
-   MODULE 0 — Big picture
+   MODULE 0, Big picture
    ===================================================================== */
 M.push({
   id: 'intro', icon: 'compass', title: 'Start Here', tag: 'What is a design system, and why do six frameworks even exist?',
   html: () => `
+  <div class="stage" aria-label="Live specimen driven by the design tokens">
+    <div class="ds-card"><div class="hd">Team plan</div>Unlimited projects and shared tokens. <span class="chip">Specimen</span>
+      <div class="row" style="margin-top:var(--ds-space)"><button class="ds-btn">Choose plan</button><button class="ds-btn v-ghost">Compare</button></div></div>
+    <p style="max-width:26ch;margin:0;font-size:var(--fs-ui);color:var(--muted)">This card is built from three tokens. Change them in the sidebar and it changes here, and in every lesson.</p>
+  </div>
   <div class="plain">Imagine a giant <b>LEGO box</b> that a whole company shares, plus an instruction book. The bricks are buttons, inputs and cards. The book says "our blue is <i>this</i> blue, corners are <i>this</i> round". That box + book is a <b>design system</b>.
-  <br>A <b>framework</b> (React, Vue, SwiftUI…) is the <i>table you build on</i>. Web tables, iPhone tables and Android tables all need the same bricks — but each table has its own rules.</div>
+  <br>A <b>framework</b> (React, Vue, SwiftUI…) is the <i>table you build on</i>. Web tables, iPhone tables and Android tables all need the same bricks, but each table has its own rules.</div>
 
   <h2>The 4 layers of a design system <small>(click each)</small></h2>
   ${cards([
-    ['1 · Design tokens', 'The smallest decisions, stored as named values: <code>color.primary</code>, <code>radius.md</code>, <code>space.4</code>. Platform‑neutral — just data.'],
-    ['2 · Components', 'Reusable building blocks made from tokens: Button, TextField, Card. <b>This is where frameworks come in</b> — each framework has its own way to write a component.'],
+    ['1 · Design tokens', 'The smallest decisions, stored as named values: <code>color.primary</code>, <code>radius.md</code>, <code>space.4</code>. Platform‑neutral, just data.'],
+    ['2 · Components', 'Reusable building blocks made from tokens: Button, TextField, Card. <b>This is where frameworks come in</b>, each framework has its own way to write a component.'],
     ['3 · Patterns', 'Recipes combining components: login form, data table, empty state, navigation.'],
     ['4 · Guidelines & docs', 'The instruction book: when to use which button, accessibility rules, tone of voice. Often a Storybook or docs site.']
   ])}
 
   <h2>The core problem</h2>
-  <div class="plain">Design says: "Primary button, 10px corners, brand purple." Then engineering has to build that <b>six times</b>, in six languages. The design system's job is to make all six builds <i>look and behave the same</i> without six people re‑deciding everything.</div>
+  <div class="plain">Design says: "Primary button, 10px corners, brand blue." Then engineering has to build that <b>six times</b>, in six languages. The design system's job is to make all six builds <i>look and behave the same</i> without six people re‑deciding everything.</div>
 
   <h2>Same button, six dialects</h2>
-  <p>Each tab is the same thing — a button labelled "Save". Notice the <i>idea</i> is identical, only the grammar changes.</p>
+  <p>Each tab is the same thing, a button labelled "Save". Notice the <i>idea</i> is identical, only the grammar changes.</p>
   ${tabs('btn6', [
     ['React', code('jsx', R`function SaveButton({ onPress }) {
   return <button className="ds-btn" onClick={onPress}>Save</button>;
@@ -178,35 +180,34 @@ customElements.define('save-button', SaveButton);`)],
   ])}
 
   <div class="tie"><b>The big idea of this whole app:</b> tokens are shared by everyone; components are re‑implemented per framework; a good design system keeps both in sync. You'll see that one more time at the end as a pipeline.</div>
-
-  <div class="tip">Try it right now: drag the <b>Primary / Radius / Spacing</b> controls in the left sidebar, then look at this button: <button class="ds-btn">Save</button> — it's already wired to tokens.</div>`,
+`,
   quiz: [
-    { q: 'What is a "design token"?', o: ['A login credential', 'A named design decision stored as data (e.g. color.primary = #6d5efc)', 'A React component', 'A Figma plugin'], a: 1, why: 'Tokens are the smallest, platform-neutral design decisions: colours, spacing, radii, type sizes.' },
+    { q: 'What is a "design token"?', o: ['A login credential', 'A named design decision stored as data (e.g. color.primary = #1d5fbf)', 'A React component', 'A Figma plugin'], a: 1, why: 'Tokens are the smallest, platform-neutral design decisions: colours, spacing, radii, type sizes.' },
     { q: 'Why do design systems need to care about frameworks?', o: ['They don\'t', 'Each platform builds components differently, but the result must look and behave the same', 'Frameworks decide the brand colours', 'Only for performance'], a: 1, why: 'Components must be implemented in each framework/platform, but share tokens and guidelines to stay consistent.' },
     { q: 'Which layer is closest to "raw data" that every platform can share?', o: ['Components', 'Patterns', 'Tokens', 'Pages'], a: 2, why: 'Tokens are just names + values, so they can be exported to CSS, Swift, Kotlin, etc.' }
   ]
 });
 
 /* =====================================================================
-   MODULE 1 — Tokens lab
+   MODULE 1, Tokens lab
    ===================================================================== */
 M.push({
   id: 'tokens', icon: 'drop', title: 'Design Tokens Lab', tag: 'The shared language between design, web, iOS and Android.',
   html: () => `
-  <div class="plain">A token is a <b>nickname for a value</b>. Instead of writing <code>#6d5efc</code> in 400 places, you write <code>primary</code> once. Change it once → everything changes. Like a contact in your phone: "Mum" instead of a phone number.</div>
+  <div class="plain">A token is a <b>nickname for a value</b>. Instead of writing <code>#1d5fbf</code> in 400 places, you write <code>primary</code> once. Change it once → everything changes. Like a contact in your phone: "Mum" instead of a phone number.</div>
 
   <h2>Three tiers (click to reveal)</h2>
   ${cards([
-    ['Primitive (raw)', '<code>purple-500 = #6d5efc</code><br>The palette. Says <i>what</i> the value is, not <i>what it is for</i>.'],
-    ['Semantic (meaning)', '<code>color.action.primary = {purple-500}</code><br>Says what it is <i>for</i>. In dark mode it can point to a different primitive — components never notice.'],
+    ['Primitive (raw)', '<code>blue-500 = #1d5fbf</code><br>The palette. Says <i>what</i> the value is, not <i>what it is for</i>.'],
+    ['Semantic (meaning)', '<code>color.action.primary = {blue-500}</code><br>Says what it is <i>for</i>. In dark mode it can point to a different primitive, components never notice.'],
     ['Component', '<code>button.background = {color.action.primary}</code><br>Used by one component only. Lets you tweak Button without touching Card.']
   ])}
 
   <h2>Playground</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
   <p>The sidebar sliders edit the tokens. Watch the preview and the <b>generated code for 3 platforms</b> update live:</p>
   <div class="stage" id="tk-stage">
-    <div class="ds-card"><div class="hd">Upgrade plan</div>Unlock everything for your team. <span class="chip">New</span>
+    <div class="ds-card"><div class="hd">Upgrade plan</div>Unlimited projects and shared tokens for your team. <span class="chip">New</span>
       <div class="row" style="margin-top:var(--ds-space)"><button class="ds-btn">Upgrade</button><button class="ds-btn v-ghost">Later</button></div>
       <div class="ft">Cancel any time</div></div>
   </div>
@@ -225,19 +226,19 @@ M.push({
     draw(); tokenListeners.push(draw);
   },
   quiz: [
-    { q: '"color.action.primary" pointing to "purple-500" is which tier?', o: ['Primitive', 'Semantic', 'Component', 'None'], a: 1, why: 'Semantic tokens describe purpose (action/primary) and reference primitives (purple-500).' },
+    { q: '"color.action.primary" pointing to "blue-500" is which tier?', o: ['Primitive', 'Semantic', 'Component', 'None'], a: 1, why: 'Semantic tokens describe purpose (action/primary) and reference primitives (blue-500).' },
     { q: 'Why have a semantic tier instead of using raw colours everywhere?', o: ['It is shorter', 'Dark mode / rebrands: change what the semantic token points to, components stay untouched', 'Browsers require it', 'It improves speed'], a: 1, why: 'Semantic indirection is what makes theming cheap.' },
     { q: 'One JSON of tokens becoming CSS + Swift + Kotlin is done by…', o: ['A React hook', 'A build tool such as Style Dictionary', 'Shadow DOM', 'Dependency injection'], a: 1, why: 'Token transformers generate each platform\'s format from a single source.' }
   ]
 });
 
 /* =====================================================================
-   MODULE 2 — React
+   MODULE 2, React
    ===================================================================== */
 M.push({
   id: 'react', icon: 'atom', title: 'React', tag: 'UI = a function of state. Describe what it should look like; React figures out the changes.',
   html: () => `
-  <div class="plain">In React a component is just a <b>function that returns a description of the screen</b>. When data changes, React calls your function again, compares the new description to the old one, and updates only what changed in the browser. You never say "change this text" — you say "given count = 5, the screen looks like <i>this</i>".</div>
+  <div class="plain">In React a component is just a <b>function that returns a description of the screen</b>. When data changes, React calls your function again, compares the new description to the old one, and updates only what changed in the browser. You never say "change this text", you say "given count = 5, the screen looks like <i>this</i>".</div>
 
   <h2>Key ideas (click)</h2>
   ${cards([
@@ -249,8 +250,8 @@ M.push({
     ['Context', 'A way to pass data (e.g. the theme) to any depth without handing it down through every level.']
   ])}
 
-  <h2>1. Props playground — a design system Button</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <h2>1. Props playground: a design system Button</h2>
+  <div class="panel"><span class="try">Try it</span>
     <div class="row">
       <label class="ctl">label <input type="text" id="rb-label" value="Save" size="8"></label>
       <label class="ctl">variant <select id="rb-var"><option>primary</option><option>secondary</option><option>ghost</option></select></label>
@@ -263,7 +264,7 @@ M.push({
   </div>
 
   <h2>2. The render cycle</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
     <div class="row"><button class="ds-btn" id="rc-btn">Clicked 0 times</button><span>Function ran: <b id="rc-n">1</b> time(s)</span></div>
     <div id="rc-log" class="log" style="margin:10px 0"></div>
     <b>Step through what happens on a click:</b>
@@ -271,7 +272,7 @@ M.push({
   </div>
 
   <h2>3. Context vs. "prop drilling"</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
     <div class="row">
       <label class="ctl"><input type="radio" name="rx-mode" value="drill" checked> Pass <code>theme</code> as props</label>
       <label class="ctl"><input type="radio" name="rx-mode" value="ctx"> Use Context</label>
@@ -283,9 +284,9 @@ M.push({
   </div>
 
   <div class="tie"><b>React design systems:</b> Material UI, Chakra UI, Ant Design, Carbon, Polaris, and <b>shadcn/ui + Radix</b> (unstyled "headless" behaviour + your tokens).
-  <ul><li><b>Theme via Context</b> — a <code>ThemeProvider</code> at the top feeds tokens to all components.</li>
-  <li><b>Tokens as CSS variables</b> — the modern, framework-agnostic way (what this app does!).</li>
-  <li><b>Props = variants</b> — <code>variant</code>, <code>size</code> enforce the system's rules.</li>
+  <ul><li><b>Theme via Context</b>, a <code>ThemeProvider</code> at the top feeds tokens to all components.</li>
+  <li><b>Tokens as CSS variables</b>, the modern, framework-agnostic way (what this app does!).</li>
+  <li><b>Props = variants</b>, <code>variant</code>, <code>size</code> enforce the system's rules.</li>
   <li><b>Storybook</b> documents each component with live examples.</li></ul></div>`,
   init(root) {
     /* props playground */
@@ -349,12 +350,12 @@ function Button() {
 });
 
 /* =====================================================================
-   MODULE 3 — Vue
+   MODULE 3, Vue
    ===================================================================== */
 M.push({
   id: 'vue', icon: 'vue', title: 'Vue', tag: 'HTML-first templates + reactivity that knows exactly what depends on what.',
   html: () => `
-  <div class="plain">Vue lets you write a component as <b>one file with three parts</b>: <code>&lt;template&gt;</code> (the HTML), <code>&lt;script&gt;</code> (the logic) and <code>&lt;style&gt;</code> (the CSS). When you change a reactive variable, Vue <b>already knows</b> which pieces of the template use it — so it updates just those pieces, no guessing.</div>
+  <div class="plain">Vue lets you write a component as <b>one file with three parts</b>: <code>&lt;template&gt;</code> (the HTML), <code>&lt;script&gt;</code> (the logic) and <code>&lt;style&gt;</code> (the CSS). When you change a reactive variable, Vue <b>already knows</b> which pieces of the template use it, so it updates just those pieces, no guessing.</div>
 
   ${code('vue', R`<script setup>
 import { ref, computed } from 'vue'
@@ -380,8 +381,8 @@ const greeting = computed(() => 'Hi ' + name.value) // auto-updates
   ])}
 
   <h2>1. Fine‑grained reactivity</h2>
-  <div class="panel"><span class="try">Try It</span>
-    <p>Type in the box and watch <b>only the things that depend on <code>name</code></b> flash. Then click the counter — a different set flashes.</p>
+  <div class="panel"><span class="try">Try it</span>
+    <p>Type in the box and watch <b>only the things that depend on <code>name</code></b> flash. Then click the counter, a different set flashes.</p>
     <div class="row"><input type="text" id="vu-in" value="Ada" aria-label="Name"> <button class="btn" id="vu-inc">count++</button></div>
     <table style="margin-top:10px"><tr><th>Piece of template</th><th>Depends on</th><th>Live value</th></tr>
       <tr><td><code>{{ name }}</code></td><td>name</td><td><span class="dep" id="vu-a"></span></td></tr>
@@ -391,22 +392,22 @@ const greeting = computed(() => 'Hi ' + name.value) // auto-updates
       <tr><td><code>&lt;footer&gt;static&lt;/footer&gt;</code></td><td>nothing</td><td><span class="dep">static</span></td></tr></table>
   </div>
 
-  <h2>2. Slots — the Card with holes</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <h2>2. Slots, the Card with holes</h2>
+  <div class="panel"><span class="try">Try it</span>
     <div class="row">
       <label class="ctl"><input type="checkbox" id="sl-h" checked> #header slot</label>
       <label class="ctl"><input type="checkbox" id="sl-d" checked> default slot</label>
       <label class="ctl"><input type="checkbox" id="sl-f"> #footer slot</label>
     </div>
     <div class="stage" id="sl-stage"></div><div id="sl-code"></div>
-    <p style="font-size:14px;color:var(--muted)">The design system owns the card's <i>frame</i> (spacing, border, radius from tokens). Teams only fill the holes — so every card looks consistent.</p>
+    <p style="font-size:14px;color:var(--muted)">The design system owns the card's <i>frame</i> (spacing, border, radius from tokens). Teams only fill the holes, so every card looks consistent.</p>
   </div>
 
   <div class="tie"><b>Vue design systems:</b> Vuetify, PrimeVue, Element Plus, Quasar, Nuxt UI, Naive UI.
   <ul><li><b>Slots</b> = flexible composition inside a locked-down design.</li>
   <li><b>Scoped styles + CSS variables</b> = tokens without style leaks.</li>
   <li><b>provide / inject</b> = Vue's version of React Context for theming.</li>
-  <li>Vuetify/PrimeVue expose a <b>theme config</b> object — basically your tokens.</li></ul></div>`,
+  <li>Vuetify/PrimeVue expose a <b>theme config</b> object, basically your tokens.</li></ul></div>`,
   init(root) {
     let name = 'Ada', count = 0;
     const els = { a: $('#vu-a', root), b: $('#vu-b', root), c: $('#vu-c', root), d: $('#vu-d', root) };
@@ -418,8 +419,8 @@ const greeting = computed(() => 'Hi ' + name.value) // auto-updates
 
     const drawS = () => {
       const h = $('#sl-h', root).checked, d = $('#sl-d', root).checked, f = $('#sl-f', root).checked;
-      $('#sl-stage', root).innerHTML = `<div class="ds-card">${h ? '<div class="hd">Team plan</div>' : ''}${d ? '$29 / month — unlimited projects.' : ''}${f ? '<div class="ft">Billed yearly</div>' : ''}</div>`;
-      $('#sl-code', root).innerHTML = code('vue', `<DsCard>\n${h ? '  <template #header>Team plan</template>\n' : ''}${d ? '  $29 / month — unlimited projects.\n' : ''}${f ? '  <template #footer>Billed yearly</template>\n' : ''}</DsCard>`);
+      $('#sl-stage', root).innerHTML = `<div class="ds-card">${h ? '<div class="hd">Team plan</div>' : ''}${d ? '$29 / month, unlimited projects.' : ''}${f ? '<div class="ft">Billed yearly</div>' : ''}</div>`;
+      $('#sl-code', root).innerHTML = code('vue', `<DsCard>\n${h ? '  <template #header>Team plan</template>\n' : ''}${d ? '  $29 / month, unlimited projects.\n' : ''}${f ? '  <template #footer>Billed yearly</template>\n' : ''}</DsCard>`);
     };
     $$('#sl-h,#sl-d,#sl-f', root).forEach(e => e.onchange = drawS); drawS();
   },
@@ -431,7 +432,7 @@ const greeting = computed(() => 'Hi ' + name.value) // auto-updates
 });
 
 /* =====================================================================
-   MODULE 4 — Angular
+   MODULE 4, Angular
    ===================================================================== */
 M.push({
   id: 'angular', icon: 'shield', title: 'Angular', tag: 'The "batteries included" framework: structure, TypeScript and dependency injection built in.',
@@ -456,19 +457,19 @@ export class DsCounter {
     ['Dependency Injection', 'Components <b>ask</b> for what they need in the constructor; Angular supplies it. Great for shared services like ThemeService.'],
     ['Signals', 'Modern reactive values (like Vue refs): <code>count()</code> to read, <code>.set()</code>/<code>.update()</code> to write.'],
     ['RxJS Observables', 'Streams of values over time (HTTP, user events). Powerful, but a bigger learning curve.'],
-    ['Standalone components', 'Components that import what they need directly — no more big NgModules.']
+    ['Standalone components', 'Components that import what they need directly, no more big NgModules.']
   ])}
 
   <h2>1. Signals</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
     <div class="row"><button class="btn" id="ng-inc">count.update(n =&gt; n+1)</button><button class="btn" id="ng-set">count.set(10)</button><button class="btn" id="ng-rst">count.set(0)</button></div>
     <div class="row" style="margin:10px 0">count() = <span class="dep" id="ng-c"></span> computed double() = <span class="dep" id="ng-d"></span></div>
     <div id="ng-log" class="log" style="height:90px"></div>
-    <p style="font-size:14px;color:var(--muted)">Notice <code>double</code> never needs to be told to update — it's declared as a formula of <code>count</code>.</p>
+    <p style="font-size:14px;color:var(--muted)">Notice <code>double</code> never needs to be told to update, it's declared as a formula of <code>count</code>.</p>
   </div>
 
   <h2>2. Dependency Injection</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
     <p>Two components, A and B, both inject a <code>ThemeService</code>. Does changing it in A affect B? Depends <i>where it's provided</i>.</p>
     <div class="row">
       <label class="ctl"><input type="radio" name="di" value="root" checked> <code>providedIn: 'root'</code> (one shared instance)</label>
@@ -482,8 +483,8 @@ export class DsCounter {
   </div>
 
   <div class="tie"><b>Angular design systems:</b> <b>Angular Material</b> (Google Material 3) and the <b>CDK</b> (headless behaviours: overlays, drag-drop, a11y), PrimeNG, Spartan UI, Clarity, Carbon for Angular.
-  <ul><li><b>Theming service via DI</b> — one singleton hands tokens to all components.</li>
-  <li>Material 3 exposes tokens as CSS variables like <code>--mat-sys-primary</code> — override them to rebrand.</li>
+  <ul><li><b>Theming service via DI</b>, one singleton hands tokens to all components.</li>
+  <li>Material 3 exposes tokens as CSS variables like <code>--mat-sys-primary</code>, override them to rebrand.</li>
   <li>Strong typing = the compiler catches wrong prop values (e.g. <code>variant="primry"</code>).</li>
   <li>Enterprises love it: <b>one way to do everything</b> keeps hundreds of devs consistent.</li></ul></div>`,
   init(root) {
@@ -497,7 +498,7 @@ export class DsCounter {
     $('#ng-rst', root).onclick = () => { n = 0; upd('set(0)'); };
 
     /* DI */
-    const accents = ['purple', 'teal', 'orange', 'pink'];
+    const accents = ['blue', 'teal', 'orange', 'pink'];
     let id = 0, shared = { id: ++id, i: 0 }, A = { id: ++id, i: 0 }, B = { id: ++id, i: 0 };
     const draw = () => {
       const root_ = $('input[name=di]:checked', root).value === 'root';
@@ -506,7 +507,7 @@ export class DsCounter {
       $('#di-ca', root).textContent = accents[a.i % 4]; $('#di-cb', root).textContent = accents[b.i % 4];
       $('#di-code', root).innerHTML = root_
         ? code('ts', R`@Injectable({ providedIn: 'root' })   // ONE instance for the whole app
-export class ThemeService { accent = signal('purple'); }
+export class ThemeService { accent = signal('blue'); }
 
 constructor() { this.theme = inject(ThemeService); } // A and B get the same object`)
         : code('ts', R`@Component({ ..., providers: [ThemeService] }) // each component gets its OWN instance
@@ -518,18 +519,18 @@ export class CompA { theme = inject(ThemeService); }`);
   },
   quiz: [
     { q: 'What is dependency injection in Angular?', o: ['Angular supplies the objects (services) a class asks for', 'Injecting CSS at runtime', 'A security attack', 'Lazy-loading images'], a: 0, why: 'Classes declare what they need; Angular\'s injector creates and provides it.' },
-    { q: 'With providedIn: \'root\', how many instances of the service exist?', o: ['One per component', 'One shared for the app', 'Two', 'It depends on the browser'], a: 1, why: 'Root-provided services are singletons — perfect for app-wide theme or token services.' },
+    { q: 'With providedIn: \'root\', how many instances of the service exist?', o: ['One per component', 'One shared for the app', 'Two', 'It depends on the browser'], a: 1, why: 'Root-provided services are singletons, perfect for app-wide theme or token services.' },
     { q: 'Angular Material\'s CDK is…', o: ['A CSS file', 'A set of unstyled behaviours (overlay, a11y, drag-drop) for building your own components', 'A database', 'The router'], a: 1, why: 'The CDK is the "headless" layer many Angular design systems build upon.' }
   ]
 });
 
 /* =====================================================================
-   MODULE 5 — Web Components (these demos are REAL custom elements)
+   MODULE 5, Web Components (these demos are REAL custom elements)
    ===================================================================== */
-const BTN_CSS = `button{font:inherit;font-weight:600;cursor:pointer;border:2px solid transparent;color:#fff;background:var(--ds-primary,#6d5efc);border-radius:var(--ds-radius,10px);padding:calc(var(--ds-space,12px)*.6) calc(var(--ds-space,12px)*1.6)}`;
+const BTN_CSS = `button{font:inherit;font-weight:600;cursor:pointer;border:2px solid transparent;color:#fff;background:var(--ds-primary,#1d5fbf);border-radius:var(--ds-radius,10px);padding:calc(var(--ds-space,12px)*.6) calc(var(--ds-space,12px)*1.6)}`;
 class DsBtnShadow extends HTMLElement {
   static observedAttributes = ['variant'];
-  constructor() { super(); this.attachShadow({ mode: 'open' }).innerHTML = `<style>${BTN_CSS}:host([variant=ghost]) button{background:transparent;color:var(--ds-primary,#6d5efc);border-color:var(--ds-primary,#6d5efc)}</style><button part="button"><slot></slot></button>`; this.shadowRoot.querySelector('button').addEventListener('click', () => this.dispatchEvent(new CustomEvent('ds-press', { bubbles: true, composed: true }))); }
+  constructor() { super(); this.attachShadow({ mode: 'open' }).innerHTML = `<style>${BTN_CSS}:host([variant=ghost]) button{background:transparent;color:var(--ds-primary,#1d5fbf);border-color:var(--ds-primary,#1d5fbf)}</style><button part="button"><slot></slot></button>`; this.shadowRoot.querySelector('button').addEventListener('click', () => this.dispatchEvent(new CustomEvent('ds-press', { bubbles: true, composed: true }))); }
 }
 class DsBtnPlain extends HTMLElement {
   static observedAttributes = ['variant'];
@@ -540,9 +541,9 @@ customElements.define('ds-btn-shadow', DsBtnShadow);
 customElements.define('ds-btn-plain', DsBtnPlain);
 
 M.push({
-  id: 'wc', icon: 'cube', title: 'Web Components', tag: 'The browser\'s own component system — no framework required, works inside all of them.',
+  id: 'wc', icon: 'cube', title: 'Web Components', tag: 'The browser\'s own component system, no framework required, works inside all of them.',
   html: () => `
-  <div class="plain">React, Vue and Angular are <b>libraries you download</b>. Web Components are <b>built into the browser</b>. You teach the browser a new HTML tag, like <code>&lt;ds-button&gt;</code>, and it works anywhere: plain HTML, React, Vue, Angular, even WordPress. That's why many big companies build their design system as Web Components — "write once, use in any framework".</div>
+  <div class="plain">React, Vue and Angular are <b>libraries you download</b>. Web Components are <b>built into the browser</b>. You teach the browser a new HTML tag, like <code>&lt;ds-button&gt;</code>, and it works anywhere: plain HTML, React, Vue, Angular, even WordPress. That's why many big companies build their design system as Web Components, "write once, use in any framework".</div>
 
   <h2>The 3 browser features (click)</h2>
   ${cards([
@@ -562,11 +563,11 @@ M.push({
 }
 customElements.define('ds-button', DsButton);
 
-// usage — in ANY framework or plain HTML:
+// usage, in ANY framework or plain HTML:
 // <ds-button variant="ghost">Save</ds-button>`)}
 
   <h2>1. Real elements: Shadow DOM vs no Shadow DOM</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
     <p>Both buttons below are <b>real custom elements running in your browser</b>. The left uses Shadow DOM; the right does not. Press the button to apply a careless global stylesheet: <code>button { background: hotpink; border-radius: 0; font-family: serif }</code></p>
     <div class="row"><button class="btn pri" id="wc-leak">Apply Careless Global CSS</button>
     <label class="ctl">variant <select id="wc-var"><option value="">primary</option><option>ghost</option></select></label></div>
@@ -574,7 +575,7 @@ customElements.define('ds-button', DsButton);
       <div><b>With Shadow DOM</b><br><br><ds-btn-shadow id="wc-s">Save</ds-btn-shadow><p style="font-size:13px">Protected</p></div>
       <div><b>Without Shadow DOM</b><br><br><ds-btn-plain id="wc-p">Save</ds-btn-plain><p style="font-size:13px">Exposed</p></div>
     </div>
-    <p style="font-size:14px;color:var(--muted)">Notice the sidebar sliders still restyle the protected one: CSS <b>custom properties (variables)</b> deliberately cross the shadow boundary. That is exactly how design tokens reach Web Components — the one door you leave open on purpose.</p>
+    <p style="font-size:14px;color:var(--muted)">Notice the sidebar sliders still restyle the protected one: CSS <b>custom properties (variables)</b> deliberately cross the shadow boundary. That is exactly how design tokens reach Web Components, the one door you leave open on purpose.</p>
   </div>
 
   <h2>2. Three ways in and out of a component</h2>
@@ -608,12 +609,12 @@ customElements.define('ds-button', DsButton);
 });
 
 /* =====================================================================
-   MODULE 6 — SwiftUI
+   MODULE 6, SwiftUI
    ===================================================================== */
 M.push({
-  id: 'swiftui', icon: 'stack', title: 'SwiftUI', tag: 'Apple\'s declarative UI for iPhone, iPad, Mac & Watch — view = struct, style = chained modifiers.',
+  id: 'swiftui', icon: 'stack', title: 'SwiftUI', tag: 'Apple\'s declarative UI for iPhone, iPad, Mac & Watch, view = struct, style = chained modifiers.',
   html: () => `
-  <div class="plain">In SwiftUI you describe the screen in Swift code: "a vertical stack containing a text and a button". Each view is a lightweight <b>struct</b>. You style it by chaining <b>modifiers</b> — little instructions applied <i>one after another</i>, like layers of clothing. And <b>order matters</b>: a shirt over a coat is not a coat over a shirt.</div>
+  <div class="plain">In SwiftUI you describe the screen in Swift code: "a vertical stack containing a text and a button". Each view is a lightweight <b>struct</b>. You style it by chaining <b>modifiers</b>, little instructions applied <i>one after another</i>, like layers of clothing. And <b>order matters</b>: a shirt over a coat is not a coat over a shirt.</div>
 
   ${code('swift', R`struct CounterView: View {
     @State private var count = 0            // state: change it → view refreshes
@@ -635,12 +636,12 @@ M.push({
     ['Stacks', '<code>VStack</code> (vertical), <code>HStack</code> (horizontal), <code>ZStack</code> (layered). Layout is built from nesting these.'],
     ['Modifiers', 'Methods like <code>.padding()</code>, <code>.background()</code>, <code>.font()</code>. Each returns a <b>new wrapped view</b>.'],
     ['@State / @Binding', '<code>@State</code> owns a value; <code>@Binding</code> lets a child read &amp; write the parent\'s value (like v-model).'],
-    ['@Environment', 'Values flowing down the tree automatically: colour scheme, locale, text size — and your own theme.'],
+    ['@Environment', 'Values flowing down the tree automatically: colour scheme, locale, text size, and your own theme.'],
     ['Previews', 'Xcode shows your view live while you type, in light, dark and large‑text variants.']
   ])}
 
-  <h2>1. Modifier order — the wrapping trick</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <h2>1. Modifier order, the wrapping trick</h2>
+  <div class="panel"><span class="try">Try it</span>
     <p>Toggle modifiers on/off and use ↑ ↓ to reorder them. Especially try swapping <code>.padding()</code> and <code>.background()</code>.</p>
     <div class="grid"><div><div id="sw-list"></div></div>
     <div><div class="stage" id="sw-stage" style="min-height:140px"></div></div></div>
@@ -648,13 +649,13 @@ M.push({
   </div>
 
   <h2>2. @State drives the view</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
     <div class="phone" id="sw-phone"><label><b>Notifications</b> <input type="checkbox" id="sw-on"></label>
       <p id="sw-msg" style="margin:10px 0 4px"></p>
       <input type="range" id="sw-sl" min="1" max="3" value="1" style="width:100%" aria-label="Dynamic Type size"><div style="font-size:12px">Dynamic Type size</div></div>
     ${code('swift', R`@State private var isOn = false
 Toggle("Notifications", isOn: $isOn)
-Text(isOn ? "You'll get alerts 🔔" : "Alerts are off 🔕")`)}
+Text(isOn ? "You'll get alerts" : "Alerts are off")`)}
   </div>
 
   <div class="tie"><b>SwiftUI design systems:</b> start from Apple's <b>Human Interface Guidelines</b>, then add your own brand layer.
@@ -697,24 +698,24 @@ Text(isOn ? "You'll get alerts 🔔" : "Alerts are off 🔕")`)}
     };
     tokenListeners.push(() => { }); draw();
 
-    const msg = () => { $('#sw-msg', root).textContent = $('#sw-on', root).checked ? "You'll get alerts 🔔" : 'Alerts are off 🔕'; $('#sw-phone', root).style.fontSize = (12 + $('#sw-sl', root).value * 3) + 'px'; };
+    const msg = () => { $('#sw-msg', root).textContent = $('#sw-on', root).checked ? "You'll get alerts" : 'Alerts are off'; $('#sw-phone', root).style.fontSize = (12 + $('#sw-sl', root).value * 3) + 'px'; };
     $('#sw-on', root).onchange = msg; $('#sw-sl', root).oninput = msg; msg();
   },
   quiz: [
     { q: 'In SwiftUI, what does @State do?', o: ['Stores a value owned by the view; changing it refreshes the view', 'Declares a CSS state', 'Connects to a server', 'Marks a function as async'], a: 0, why: '@State is local, view-owned memory that triggers a re-render when changed.' },
-    { q: 'Text("Hi").padding().background(.blue) vs .background(.blue).padding() — what differs?', o: ['Nothing', 'First: blue fills text + padding. Second: blue only behind the text, padding stays transparent', 'First crashes', 'Second is not allowed'], a: 1, why: 'Each modifier wraps the view produced so far; order changes what is wrapped.' },
+    { q: 'Text("Hi").padding().background(.blue) vs .background(.blue).padding(), what differs?', o: ['Nothing', 'First: blue fills text + padding. Second: blue only behind the text, padding stays transparent', 'First crashes', 'Second is not allowed'], a: 1, why: 'Each modifier wraps the view produced so far; order changes what is wrapped.' },
     { q: 'Which SwiftUI feature is closest to React Context?', o: ['@Environment', '@State', 'VStack', 'Previews'], a: 0, why: 'Environment values flow down the view tree automatically.' },
     { q: 'How do you package a reusable button look in SwiftUI?', o: ['A global CSS file', 'A custom ButtonStyle (or ViewModifier)', 'A Storyboard', 'A JSON file'], a: 1, why: 'ButtonStyle/ViewModifier encapsulate styling for reuse.' }
   ]
 });
 
 /* =====================================================================
-   MODULE 7 — Jetpack Compose
+   MODULE 7, Jetpack Compose
    ===================================================================== */
 M.push({
-  id: 'compose', icon: 'grid', title: 'Jetpack Compose', tag: 'Android\'s declarative UI — @Composable functions that re-run only where state is read.',
+  id: 'compose', icon: 'grid', title: 'Jetpack Compose', tag: 'Android\'s declarative UI, @Composable functions that re-run only where state is read.',
   html: () => `
-  <div class="plain">Compose is to Android what SwiftUI is to iOS (and what React is to the web). You write <b>functions marked <code>@Composable</code></b> that "emit" UI. When state changes, Compose re-runs <i>only the functions that actually read that state</i> — this is called <b>recomposition</b>. Styling uses a chain of <b>Modifiers</b>, very like SwiftUI.</div>
+  <div class="plain">Compose is to Android what SwiftUI is to iOS (and what React is to the web). You write <b>functions marked <code>@Composable</code></b> that "emit" UI. When state changes, Compose re-runs <i>only the functions that actually read that state</i>, this is called <b>recomposition</b>. Styling uses a chain of <b>Modifiers</b>, very like SwiftUI.</div>
 
   ${code('kotlin', R`@Composable
 fun Counter() {
@@ -737,7 +738,7 @@ fun Counter() {
   ])}
 
   <h2>1. Recomposition visualizer</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
     <p>Pick which composables <b>read</b> <code>count</code>, then press the button. Only readers recompose (flash + counter goes up). Everything else is <b>skipped</b>.</p>
     <div class="row" id="cp-readers"></div>
     <div class="tree" style="margin-top:10px"><span class="lab">Screen()</span> <button class="ds-btn s-sm" id="cp-inc">count++</button>
@@ -746,7 +747,7 @@ fun Counter() {
   </div>
 
   <h2>2. Your tokens → MaterialTheme</h2>
-  <div class="panel"><span class="try">Try It</span><p>Move the sidebar sliders; this code is generated from them:</p><div id="cp-theme"></div>
+  <div class="panel"><span class="try">Try it</span><p>Move the sidebar sliders; this code is generated from them:</p><div id="cp-theme"></div>
     <div class="stage"><button class="ds-btn">Button</button><span class="chip">AssistChip</span></div></div>
 
   <div class="tie"><b>Compose design systems:</b> Material 3 is built in; many brands build a custom layer on top.
@@ -779,7 +780,7 @@ MyAppTheme {                 // wraps MaterialTheme + CompositionLocalProvider
 });
 
 /* =====================================================================
-   MODULE 8 — Compare & choose
+   MODULE 8, Compare & choose
    ===================================================================== */
 M.push({
   id: 'compare', icon: 'compare', title: 'Compare & Choose', tag: 'Putting it all together: how the six relate, and how one design system feeds them all.',
@@ -804,7 +805,7 @@ M.push({
   <p style="text-align:center;color:var(--muted)">Designers change a value once. A build step regenerates code for every platform. Components stay "dumb" about raw values.</p></div>
 
   <h2>Which would you pick?</h2>
-  <div class="panel"><span class="try">Try It</span>
+  <div class="panel"><span class="try">Try it</span>
     <p>Choose a scenario:</p>
     <div class="row" id="sc-btns"></div>
     <div id="sc-out" class="stepbody" style="margin-top:10px"></div></div>`,
@@ -813,26 +814,26 @@ M.push({
       ['Our company has 8 web teams on React, Vue and Angular', '<b>Web Components</b> (built with Lit) for the shared design system, or ship the same tokens + thin framework wrappers. One implementation, every team uses it.'],
       ['iPhone-only app', '<b>SwiftUI</b> + Apple\'s HIG, with your tokens in an Asset Catalog. You get Dynamic Type, dark mode and accessibility almost for free.'],
       ['Android-only app', '<b>Jetpack Compose</b> + Material 3, with your colour/shape tokens in a custom ColorScheme.'],
-      ['Big enterprise dashboard, 200 developers', '<b>Angular</b> (strong conventions, TypeScript everywhere, Angular Material/CDK) — or React with strict internal guidelines.'],
+      ['Big enterprise dashboard, 200 developers', '<b>Angular</b> (strong conventions, TypeScript everywhere, Angular Material/CDK), or React with strict internal guidelines.'],
       ['Startup building a flexible web product fast', '<b>React</b> (largest ecosystem: shadcn/ui, Radix) or <b>Vue</b> (gentlest learning curve, fantastic DX).'],
-      ['Web + iOS + Android that must look identical', 'Keep <b>one token source</b>; build native components per platform (React/Vue + SwiftUI + Compose) <i>or</i> consider a cross-platform toolkit — but still share tokens and documented behaviour.']
+      ['Web + iOS + Android that must look identical', 'Keep <b>one token source</b>; build native components per platform (React/Vue + SwiftUI + Compose) <i>or</i> consider a cross-platform toolkit, but still share tokens and documented behaviour.']
     ];
     $('#sc-btns', root).innerHTML = S.map((s, i) => `<button class="btn" data-s="${i}">${s[0]}</button>`).join('');
     $('#sc-btns', root).onclick = e => { const b = e.target.closest('[data-s]'); if (b) { $$('#sc-btns .btn', root).forEach(x => x.classList.toggle('pri', x === b)); $('#sc-out', root).innerHTML = '' + S[b.dataset.s][1]; } };
   },
   quiz: [
-    { q: 'Which pairing is the "pass shared theme down the tree" mechanism?', o: ['React Context ↔ SwiftUI @Environment ↔ Compose CompositionLocal', 'React Context ↔ Angular decorators ↔ Swift Package Manager', 'Vue slots ↔ Kotlin coroutines ↔ CSS grid', 'None exist'], a: 0, why: 'All three are implicit, tree-scoped value passing — the same idea, different names.' },
+    { q: 'Which pairing is the "pass shared theme down the tree" mechanism?', o: ['React Context <-> SwiftUI @Environment ↔ Compose CompositionLocal', 'React Context ↔ Angular decorators ↔ Swift Package Manager', 'Vue slots ↔ Kotlin coroutines ↔ CSS grid', 'None exist'], a: 0, why: 'All three are implicit, tree-scoped value passing, the same idea, different names.' },
     { q: 'A company with teams on 4 different web frameworks wants ONE component set. Best fit?', o: ['Rewrite everything in React', 'Web Components', 'SwiftUI', 'Each team builds its own'], a: 1, why: 'Custom elements are framework-agnostic.' },
     { q: 'What stays identical across all six platforms in a healthy design system?', o: ['The source code', 'The design tokens & guidelines', 'The file names', 'The build tool'], a: 1, why: 'Code differs per platform; tokens and guidelines are shared.' }
   ]
 });
 
 /* =====================================================================
-   MODULE 9 — Final challenge
+   MODULE 9, Final challenge
    ===================================================================== */
 M.push({
   id: 'final', icon: 'check', title: 'Final Challenge', tag: '10 random questions from everything you learned.',
-  html: () => `<div class="plain">No hints this time. Questions are drawn from every module and reshuffled each visit — come back as often as you like to beat your score.</div>
+  html: () => `<div class="plain">No hints this time. Questions are drawn from every module and reshuffled each visit, come back as often as you like to beat your score.</div>
     <div class="panel"><b>Cheat-sheet to review first:</b><ul>
     <li><b>Tokens</b> = named values → shared by all platforms</li>
     <li><b>React</b> function re-runs → diff · <b>Vue</b> tracks dependencies · <b>Angular</b> DI + signals · <b>Web Components</b> custom elements + Shadow DOM</li>
